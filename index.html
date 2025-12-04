@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to AuraBook Discovery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles to define the Ultra Pro Max Dark Mode theme */
+        :root {
+            --bg-deep: #0e1217;      /* Very Dark Background */
+            --bg-card: #1c232f;      /* Dark Card Background */
+            --text-light: #e0f2f1;   /* Pale Cyan Text */
+            --accent-main: #06b6d4;  /* Cyan Accent Color */
+            --accent-hover: #22d3ee; /* Lighter Cyan for Hover */
+            --border-subtle: #334155; /* Slate Border */
+
+            /* NEW: Genre Colors for Modal */
+            --color-communication: #87ceeb; /* Light Blue */
+            --color-economics: #ffffe0;     /* Light Yellow */
+            --color-psychology: #000000;    /* Black (using black text on it will require override) */
+            --color-relationships: #ffc0cb; /* Light Pink */
+            --color-self-improvement: #ffa500; /* Orange */
+            --color-technology: #808080;    /* Gray */
+        }
+        
+        /* Apply custom root colors */
+        .theme-bg-deep { background-color: var(--bg-deep); }
+        .theme-bg-card { background-color: var(--bg-card); }
+        .theme-text-light { color: var(--text-light); }
+        .theme-accent-main { background-color: var(--accent-main); }
+        .theme-accent-main:hover { background-color: var(--accent-hover); }
+
+        /* General Body Styling */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Card Animation */
+        .book-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer; /* Indicate it's clickable for tracking */
+        }
+        .book-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(6, 182, 212, 0.3); /* Cyan shadow glow */
+        }
+
+        /* Button Styling */
+        .filter-btn {
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .filter-btn.active {
+            background-color: var(--accent-main);
+            color: var(--bg-deep);
+            font-weight: 600;
+        }
+        .filter-btn:not(.active):hover {
+            background-color: var(--bg-card);
+        }
+        
+        /* Responsive Grid for Card */
+        #books-grid, #recommendations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        /* Image Aspect Ratio */
+        .book-image {
+            aspect-ratio: 3/4;
+            object-fit: cover;
+        }
+
+        /* MODAL STYLES with Smooth Transition */
+        .modal-fade {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-fade.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .modal-fade:not(.hidden) {
+            opacity: 1;
+            visibility: visible;
+        }
+        /* NEW: Fix scrolling for modal content when screen is too short */
+        #modal-content {
+            max-height: 90vh; /* Set a maximum height (e.g., 90% of viewport height) */
+            overflow-y: auto; /* Enable vertical scrolling */
+        }
+    </style>
+</head>
+<body class="theme-bg-deep min-h-screen p-4 sm:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center py-6 mb-8 border-b border-gray-700">
+            <h1 class="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-500 tracking-wider">
+                AuraBook Discovery
+            </h1>
+            <p class="text-lg text-gray-400 mt-2">Curated Recommendations for Peak Performance</p>
+        </header>
+
+        <div class="mb-8 p-4 theme-bg-card rounded-xl shadow-2xl">
+            <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                <input type="text" id="search-input" placeholder="Search by book title or author..."
+                       class="flex-grow p-3 rounded-lg border border-gray-600 focus:ring-2 focus:ring-cyan-500 theme-bg-deep theme-text-light placeholder-gray-500">
+                <select id="rating-filter" class="p-3 rounded-lg border border-gray-600 theme-bg-deep theme-text-light">
+                    <option value="0">Min Global Rating</option>
+                    <option value="4.5">4.5+</option>
+                    <option value="4.0">4.0+</option>
+                    <option value="3.5">3.5+</option>
+                </select>
+            </div>
+            
+            <div id="genre-filters" class="flex flex-wrap gap-3 justify-center">
+                <button class="filter-btn active theme-bg-deep text-white px-4 py-2 rounded-full border border-cyan-600" data-genre="All">Show All</button>
+                </div>
+        </div>
+
+        <div id="books-grid">
+            </div>
+
+        <div id="no-results" class="text-center p-10 mt-10 theme-bg-card rounded-xl hidden">
+            <h3 class="text-3xl font-semibold text-red-400">No Books Found</h3>
+            <p class="text-gray-400 mt-2">Try adjusting your filters or search terms.</p>
+        </div>
+        
+        <div id="recommendation-section" class="mt-16 pt-8 border-t border-gray-700 hidden">
+            <h2 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-400 mb-6 text-center sm:text-left">
+                Recommended For You
+            </h2>
+            <p class="text-gray-400 mb-8 text-center sm:text-left">
+                Based on the books you've viewed recently (tracked in your browser).
+            </p>
+            <div id="recommendations-grid">
+                </div>
+            <div id="no-recommendations" class="text-center p-6 theme-bg-card rounded-xl hidden">
+                <p class="text-gray-400">View a few books to get personalized recommendations!</p>
+            </div>
+        </div>
+
+    </div>
+    
+    <div id="book-modal" class="modal-fade hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div id="modal-content" class="w-full max-w-4xl rounded-2xl shadow-2xl transform transition-all" style="background-color: var(--bg-card);">
+            <div class="relative p-6 sm:p-8">
+                <button id="modal-close-btn" class="absolute top-4 right-4 text-3xl theme-text-light hover:text-red-500 transition-colors focus:outline-none" aria-label="Close modal">
+                    &times;
+                </button>
+                
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="md:w-1/3 flex-shrink-0">
+                        <img id="modal-image" src="" alt="Book Cover" class="w-full rounded-lg shadow-xl book-image border border-gray-600">
+                    </div>
+
+                    <div class="md:w-2/3">
+                        <h2 id="modal-title" class="text-4xl font-extrabold" style="color: var(--accent-main);"></h2>
+                        <p id="modal-author" class="text-xl font-medium text-gray-400 mb-4"></p>
+                        
+                        <div id="modal-price-comparison-area" class="mb-6">
+                            </div>
+                        <div id="modal-genre-banner" class="flex items-center justify-between p-3 mb-4 rounded-lg">
+                            <span id="modal-genre" class="text-lg font-semibold"></span>
+                            <span id="modal-rating" class="text-lg font-semibold flex items-center text-yellow-500">
+                                <i class="fas fa-star mr-2"></i> 
+                            </span>
+                        </div>
+
+                        <p id="modal-overview" class="text-gray-300 text-base leading-relaxed mb-6"></p>
+
+                        <div class="grid grid-cols-2 gap-4 text-sm text-gray-400 p-4 rounded-lg theme-bg-deep border border-gray-700">
+                            <div><strong class="theme-text-light block">Published Year:</strong> <span id="modal-published"></span></div>
+                            <div><strong class="theme-text-light block">Language:</strong> <span id="modal-language"></span></div>
+                            <div><strong class="theme-text-light block">Pages:</strong> <span id="modal-pages"></span></div>
+                            <div class="col-span-2"><strong class="theme-text-light block">Core Subject:</strong> <span id="modal-subject"></span></div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- 1. EXTENSIVE BOOK DATA ---
+        // Replacing CSV/Database with a large JavaScript array for simplicity in a single file
+        const ALL_BOOKS_DATA = [
+            // Genre: Psychology
+            { 
+                id: 1, title: "Thinking, Fast and Slow", overview: "A comprehensive look at the two systems that drive our decision-making: System 1 (fast, intuitive) and System 2 (slow, deliberate).", published: 2011, author: "Daniel Kahneman", genre: "Psychology", language: "English", pages: 499, subject: "Cognitive Bias, Decision Making", rating: 4.8, image_url: "./images/id1.jpg", 
+                prices: [
+                    { store: 'Amazon', price: 6.27, currency: "USD", link: 'https://amzn.in/d/26iJ7Ul' },
+                    { store: 'BooksTech', price: 3.79, currency: "USD", link: 'https://bookstech.in/products/thinking-fast-and-slow-paperback-daniel-kahneman-1?_pos=4&_psq=thinkin&_ss=e&_v=1.0' },
+                    { store: 'GyaanStore', price: 2.23, currency: "USD", link: 'https://gyaanstore.com/products/thinking-fast-and-slow-by-daniel-kahneman-paperback-1' },
+                    { store: 'Crossword', price: 7.60, currency: "USD", link: 'https://www.crossword.in/products/thinking-fast-and-slow-paperback-daniel-kahneman-2' },
+                    { store: "Flipkart", price: 2.25, currency: "USD", link: "https://www.flipkart.com/thinking-fast-slow/p/itmfc5bbgfezbwcp" },
+                    { store: "BigBasket", price: 7.60, currency: "USD", link: "https://www.bigbasket.com/pd/40342201/penguin-uk-thinking-fast-and-slow-1-pc/" }
+                ]
+            },
+            { 
+                id: 2, title: "Influence: The Psychology of Persuasion", overview: "The classic book on the six universal principles of influence that can be used to become a skilled persuader and to defend yourself against unwanted influence.", published: 1984, author: "Robert Cialdini", genre: "Psychology", language: "English", pages: 320, subject: "Persuasion, Compliance", rating: 4.7, image_url: "./images/id2.jpg", 
+                prices: [
+                    { store: "TheIndianBookStore", price: 5.58, currency: "USD", link: "https://www.theindianbookstore.in/products/hardcover-influence-the-psychology-of-persuasion" },
+                    { store: "GyaanStore", price: 1.96, currency: "USD", link: "https://gyaanstore.com/products/influence-the-psychology-of-persuasion-by-phd-robert-b-cialdin-paperback" },
+                    { store: "Flipkart", price: 2.08, currency: "USD", link: "https://www.flipkart.com/influence-psychology-persuasion/p/itm663e574822852?pid=9789350044520&lid=LSTBOK9789350044520OLFIJN&marketplace=FLIPKART&cmpid=content_book_23283927061_g_8965229628_gmc_pla&tgi=sem,1,G,11214002,g,search,,784823595533,,,,c,,,,,,,&entryMethod=23283927061&&cmpid=content_23283927061_gmc_pla&gad_source=1&gad_campaignid=23283927061&gbraid=0AAAAADxRY5-mMxrW-mpK9Zdqh_dkqUpgd&gclid=CjwKCAiA86_JBhAIEiwA4i9Ju2fR_GRtXcZwfrG0z2haPighEWN06BT1xXodXVyuyJMpa4TuEE4pvhoC8QEQAvD_BwE" },
+                    { store: "Amazon", price: 5.17, currency: "USD", link: "https://amzn.in/d/3rUK006" }
+                ]
+            },
+            { 
+                id: 3, title: "Mindset: The New Psychology of Success", overview: "Explores the power of our beliefs—conscious and unconscious—and how they impact our ability to learn and thrive.", published: 2006, author: "Carol Dweck", genre: "Psychology", language: "English", pages: 304, subject: "Growth Mindset, Achievement", rating: 4.6, image_url: "./images/id3.jpg", 
+                prices: [
+                    { store: "Amazon", price: 22.38, currency: "USD", link: "https://amzn.in/d/cPIawcl" }
+                ]
+            },
+            { 
+                id: 15, title: "The Undoing Project", overview: "A story about the collaboration between Daniel Kahneman and Amos Tversky, two Israeli psychologists who founded behavioral economics.", published: 2016, author: "Michael Lewis", genre: "Psychology", language: "English", pages: 384, subject: "Cognitive Bias, Behavioral Economics", rating: 4.4, image_url: "./images/id15.jpg", 
+                prices: [
+                    { store: "Flipkart", price: 38.93, currency: "USD", link: "https://www.flipkart.com/the-undoing-project/p/itm41438eff909db#:~:text=The%20Undoing%20Project%3A%20Buy%20The,Price%20in%20India%20%7C%20Flipkart.com" },
+                    { store: "Amazon", price: 6.89, currency: "USD", link: "https://amzn.in/d/hNcdj8Q" },
+                    { store: "BooksWagon", price: 6.70, currency: "USD", link: "https://www.bookswagon.com/book/undoing-project-michael-lewis/9780141983042?srsltid=AfmBOoqYi9fms_tJE7duZypCDwHn83szoKcEFJQpOKndS0g6At-JDNo1" }
+                ]
+            },
+            { 
+                id: 21, title: "Man's Search for Meaning", overview: "A memoir and psychological treatise on logotherapy, based on the author's experiences in a Nazi concentration camp.", published: 1946, author: "Viktor Frankl", genre: "Psychology", language: "English", pages: 165, subject: "Existentialism, Resilience", rating: 4.9, image_url: "./images/id21.jpg", 
+                prices: [
+                    { store: "Amazon", price: 2.98, currency: "USD", link: "https://amzn.in/d/7rhqJyp" },
+                    { store: "Flipkart", price: 2.72, currency: "USD", link: "https://www.flipkart.com/man-s-search-meaning/p/itmfc8tnph86buhh?pid=9781846041242&lid=LSTBOK97818460412421RIRZF&marketplace=FLIPKART&cmpid=content_book_23283927061_g_8965229628_gmc_pla&tgi=sem,1,G,11214002,g,search,,784823595533,,,,c,,,,,,,&entryMethod=23283927061&&cmpid=content_23283927061_gmc_pla&gad_source=1&gad_campaignid=23283927061&gbraid=0AAAAADxRY5-mMxrW-mpK9Zdqh_dkqUpgd&gclid=CjwKCAiA86_JBhAIEiwA4i9Ju9hv9AEgJU6zX8BOlQqclGte1SFvwpIo4dK39CXakghCGFk6IudoQhoC7lMQAvD_BwE" },
+                    { store: "BooksWagon", price: 3.39, currency: "USD", link: "https://www.bookswagon.com/book/mans-search-meaning-viktor-e/9781846041242?gad_source=1&gad_campaignid=23053389983&gbraid=0AAAAAoKv851WQp4UympTy-KFU0xuVqGPK&gclid=CjwKCAiA86_JBhAIEiwA4i9Ju7k1n2EfHraR-PfB8iJerR7-6uHa7jCGY-vIPpxke675fYEnydFqbBoCRkIQAvD_BwE" }
+                ]
+            },
+            { 
+                id: 22, title: "Quiet: The Power of Introverts", overview: "Explores how introverts are misunderstood in a world that can't stop talking, and their hidden strengths.", published: 2012, author: "Susan Cain", genre: "Psychology", language: "English", pages: 352, subject: "Personality, Social Psychology", rating: 4.6, image_url: "./images/id22.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 23, title: "Predictably Irrational", overview: "Examines the hidden forces that shape our decisions, proving that we are not as rational as we think.", published: 2008, author: "Dan Ariely", genre: "Psychology", language: "English", pages: 280, subject: "Behavioral Economics, Irrationality", rating: 4.5, image_url: "./images/id23.webp", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 24, title: "Emotional Intelligence", overview: "Why it can matter more than IQ, exploring the importance of self-awareness, self-regulation, and empathy.", published: 1995, author: "Daniel Goleman", genre: "Psychology", language: "English", pages: 384, subject: "Emotional Intelligence, Neuropsychology", rating: 4.7, image_url: "./images/id24.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 25, title: "Flow: The Psychology of Optimal Experience", overview: "The concept of 'flow,' a highly focused mental state conducive to productivity and happiness.", published: 1990, author: "Mihaly Csikszentmihalyi", genre: "Psychology", language: "English", pages: 320, subject: "Positive Psychology, Motivation", rating: 4.6, image_url: "./images/id25.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 26, title: "The Power of Habit", overview: "Why we do what we do in life and business, examining the science behind habit loops.", published: 2012, author: "Charles Duhigg", genre: "Psychology", language: "English", pages: 371, subject: "Habit Formation, Neuroscience", rating: 4.5, image_url: "./images/id26.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 27, title: "Drive: The Surprising Truth About What Motivates Us", overview: "Challenges the traditional 'carrot and stick' approach to motivation, advocating for autonomy, mastery, and purpose.", published: 2009, author: "Daniel H. Pink", genre: "Psychology", language: "English", pages: 242, subject: "Motivation, Management Theory", rating: 4.6, image_url: "./images/id27.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 28, title: "Sapiens: A Brief History of Humankind", overview: "Explores the forces that shaped humanity from the Stone Age to the twenty-first century, touching on cognitive revolutions.", published: 2011, author: "Yuval Noah Harari", genre: "Psychology", language: "English", pages: 443, subject: "Evolutionary Psychology, Anthropology", rating: 4.8, image_url: "./images/id28.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 29, title: "The Lucifer Effect", overview: "Understanding how good people turn evil, based on the Stanford Prison Experiment.", published: 2007, author: "Philip Zimbardo", genre: "Psychology", language: "English", pages: 550, subject: "Social Psychology, Ethics", rating: 4.5, image_url: "./images/id29.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 30, title: "Stumbling on Happiness", overview: "Explores the psychological phenomenon of *affective forecasting*—our ability to predict how we'll feel in the future.", published: 2006, author: "Daniel Gilbert", genre: "Psychology", language: "English", pages: 277, subject: "Cognitive Science, Happiness", rating: 4.3, image_url: "./images/id30.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 31, title: "Mistakes Were Made (But Not by Me)", overview: "How we justify foolish beliefs, bad decisions, and hurtful acts through cognitive dissonance and self-justification.", published: 2007, author: "Carol Tavris, Elliot Aronson", genre: "Psychology", language: "English", pages: 304, subject: "Cognitive Dissonance, Self-Justification", rating: 4.5, image_url: "./images/id31.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 32, title: "Daring Greatly", overview: "The importance of vulnerability, shame resilience, and courage in modern life.", published: 2012, author: "Brené Brown", genre: "Psychology", language: "English", pages: 287, subject: "Vulnerability, Shame, Self-Help", rating: 4.7, image_url: "./images/id32.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 33, title: "The Interpretation of Dreams", overview: "Freud's seminal work on the importance of dreams in psychoanalytic theory and their connection to the unconscious mind.", published: 1899, author: "Sigmund Freud", genre: "Psychology", language: "English", pages: 608, subject: "Psychoanalysis, Unconscious Mind", rating: 4.2, image_url: "./images/id33.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 34, title: "The Selfish Gene", overview: "A view of evolution from the gene's perspective, arguing that biological life is driven by the self-interest of genes.", published: 1976, author: "Richard Dawkins", genre: "Psychology", language: "English", pages: 360, subject: "Evolutionary Biology, Sociobiology", rating: 4.6, image_url: "./images/id34.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 35, title: "Opening Up: The Healing Power of Confiding in Others", overview: "Explores the psychological and physical benefits of expressing emotions and secrets.", published: 1990, author: "James W. Pennebaker", genre: "Psychology", language: "English", pages: 272, subject: "Health Psychology, Emotional Expression", rating: 4.4, image_url: "./images/id35.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 36, title: "Learned Optimism", overview: "How to change your mind and your life by changing your explanatory style, introducing the concept of *learned helplessness*.", published: 1990, author: "Martin Seligman", genre: "Psychology", language: "English", pages: 319, subject: "Positive Psychology, Explanatory Style", rating: 4.5, image_url: "./images/id36.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+
+            // Genre: Communication (20 Books)
+            { 
+                id: 4, title: "Supercommunicators", overview: "The science of great conversation, breaking down how to connect with anyone by understanding what kind of communication they need.", published: 2024, author: "Charles Duhigg", genre: "Communication", language: "English", pages: 384, subject: "Active Listening, Interpersonal Skills", rating: 4.5, image_url: "./images/id4.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 5, title: "Crucial Conversations", overview: "Techniques for talking successfully when stakes are high, opinions vary, and emotions run strong.", published: 2002, author: "Patterson, Grenny, McMillan, Switzler", genre: "Communication", language: "English", pages: 256, subject: "Conflict Resolution, Dialogue", rating: 4.6, image_url: "./images/id5.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 6, title: "Nonviolent Communication", overview: "A language of compassion: the essential guide to powerful communication in all aspects of life.", published: 1999, author: "Marshall Rosenberg", genre: "Communication", language: "English", pages: 200, subject: "Empathy, Emotional Intelligence", rating: 4.3, image_url: "./images/id6.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 16, title: "The Art of Public Speaking", overview: "A classic guide to mastering the skills needed to effectively address an audience, focusing on preparation and delivery.", published: 1915, author: "Dale Carnegie", genre: "Communication", language: "English", pages: 288, subject: "Public Speaking, Presentation Skills", rating: 4.2, image_url: "./images/id16.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 37, title: "Never Split the Difference", overview: "Negotiating As If Your Life Depended On It, applying FBI hostage negotiation techniques to business and everyday life.", published: 2016, author: "Chris Voss, Tahl Raz", genre: "Communication", language: "English", pages: 273, subject: "Negotiation, Tactical Empathy", rating: 4.8, image_url: "./images/id37.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 38, title: "How to Win Friends and Influence People", overview: "Fundamental techniques for handling people, making people like you, and winning people to your way of thinking.", published: 1936, author: "Dale Carnegie", genre: "Communication", language: "English", pages: 288, subject: "Interpersonal Skills, Persuasion", rating: 4.7, image_url: "./images/id38.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 39, title: "Talk Like TED", overview: "The 9 Public-Speaking Secrets of the World's Top Minds, breaking down effective presentation strategies.", published: 2014, author: "Carmine Gallo", genre: "Communication", language: "English", pages: 288, subject: "Public Speaking, Storytelling", rating: 4.5, image_url: "./images/id39.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 40, title: "Difficult Conversations", overview: "How to Discuss What Matters Most, providing a framework for managing high-stakes discussions.", published: 1999, author: "Stone, Patton, Heen", genre: "Communication", language: "English", pages: 260, subject: "Conflict Management, Dialogue", rating: 4.4, image_url: "./images/id40.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 41, title: "The 7 Habits of Highly Effective People", overview: "Focuses on principle-centered living, including habits like 'Seek First to Understand, Then to Be Understood.'", published: 1989, author: "Stephen Covey", genre: "Communication", language: "English", pages: 384, subject: "Interpersonal Communication, Leadership", rating: 4.6, image_url: "./images/id41.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 42, title: "Just Listen", overview: "Discover the Secret to Getting Through to Absolutely Anyone, focusing on deep listening and rapport-building.", published: 2010, author: "Mark Goulston", genre: "Communication", language: "English", pages: 288, subject: "Active Listening, Empathy", rating: 4.5, image_url: "./images/id42.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 43, title: "Fierce Conversations", overview: "Achieving success at work and in life by having the conversations that really matter.", published: 2002, author: "Susan Scott", genre: "Communication", language: "English", pages: 240, subject: "Workplace Communication, Accountability", rating: 4.3, image_url: "./images/id43.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 44, title: "Made to Stick", overview: "Why Some Ideas Survive and Others Die, focusing on the principles of making communication memorable.", published: 2007, author: "Chip and Dan Heath", genre: "Communication", language: "English", pages: 304, subject: "Storytelling, Persuasion", rating: 4.7, image_url: "./images/id44.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 45, title: "The Definitive Book of Body Language", overview: "How to Read Others' Attitudes by Their Gestures, providing practical insights into non-verbal cues.", published: 2004, author: "Allan and Barbara Pease", genre: "Communication", language: "English", pages: 368, subject: "Non-verbal Communication, Reading People", rating: 4.2, image_url: "./images/id45.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 46, title: "Everyone Communicates, Few Connect", overview: "What the Most Effective People Do Differently, emphasizing the importance of shared experience and connection.", published: 2010, author: "John C. Maxwell", genre: "Communication", language: "English", pages: 256, subject: "Leadership, Connection", rating: 4.4, image_url: "./images/id46.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 47, title: "On Writing Well", overview: "The classic guide to writing nonfiction, covering principles of clarity, simplicity, and humanity.", published: 1976, author: "William Zinsser", genre: "Communication", language: "English", pages: 300, subject: "Writing Skills, Style", rating: 4.8, image_url: "./images/id47.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 48, title: "Start With Why", overview: "How Great Leaders Inspire Everyone to Take Action, focusing on communicating purpose over product.", published: 2009, author: "Simon Sinek", genre: "Communication", language: "English", pages: 256, subject: "Leadership Communication, Vision", rating: 4.6, image_url: "./images/id48.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 49, title: "Presenting with Power", overview: "A guide to dynamic presentation skills, from structure to engaging the audience.", published: 2015, author: "Jerry Weissman", genre: "Communication", language: "English", pages: 224, subject: "Public Speaking, Presentations", rating: 4.3, image_url: "./images/id49.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 50, title: "The Handbook of Intercultural Communication", overview: "An academic overview of the theories and challenges of communication across different cultures.", published: 2002, author: "Gudykunst and Mody", genre: "Communication", language: "English", pages: 500, subject: "Cross-cultural Communication, Theory", rating: 4.1, image_url: "./images/id50.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 51, title: "Crucial Accountability", overview: "Tools for resolving violated expectations, broken commitments, and bad behavior.", published: 2005, author: "Patterson, Grenny, Maxfield, McMillan, Switzler", genre: "Communication", language: "English", pages: 272, subject: "Accountability, Conflict Resolution", rating: 4.5, image_url: "./images/id51.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 52, title: "Words That Change Minds", overview: "Mastering the Language of Influence, focusing on recognizing and utilizing Meta Programs in communication.", published: 1992, author: "Shelle Rose Charvet", genre: "Communication", language: "English", pages: 300, subject: "NLP, Persuasion", rating: 4.4, image_url: "./images/id52.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+
+            // Genre: Economics (20 Books)
+            { 
+                id: 7, title: "Reason to Be Happy", overview: "Explores the intersection of economics, philosophy, and the pursuit of happiness, challenging traditional metrics of wealth.", published: 2023, author: "Kaushik Basu", genre: "Economics", language: "English", pages: 288, subject: "Welfare Economics, Behavioral Economics", rating: 4.4, image_url: "./images/id7.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 8, title: "Nudge: Improving Decisions About Health, Wealth, and Happiness", overview: "Introduces the concept of libertarian paternalism and how subtle nudges can influence people to make better choices.", published: 2008, author: "Richard Thaler, Cass Sunstein", genre: "Economics", language: "English", pages: 304, subject: "Behavioral Economics, Choice Architecture", rating: 4.7, image_url: "./images/id8.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 9, title: "Freakonomics", overview: "A deep dive into the hidden side of everything, using economic theory to explain non-traditional subjects like crime and parenting.", published: 2005, author: "Steven Levitt, Stephen Dubner", genre: "Economics", language: "English", pages: 336, subject: "Microeconomics, Data Analysis", rating: 4.5, image_url: "./images/id9.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 17, title: "Capital in the Twenty-First Century", overview: "A foundational text on wealth and income inequality in Europe and the United States since the 18th century.", published: 2013, author: "Thomas Piketty", genre: "Economics", language: "English", pages: 685, subject: "Macroeconomics, Income Inequality", rating: 4.0, image_url: "./images/id17.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 53, title: "The Wealth of Nations", overview: "The foundational text of classical economics, discussing division of labor, productivity, and free markets.", published: 1776, author: "Adam Smith", genre: "Economics", language: "English", pages: 1080, subject: "Classical Economics, Free Markets", rating: 4.6, image_url: "./images/id53.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 54, title: "Poor Economics", overview: "A Radical Rethinking of the Way to Fight Global Poverty, based on randomized controlled trials.", published: 2011, author: "Abhijit V. Banerjee, Esther Duflo", genre: "Economics", language: "English", pages: 336, subject: "Development Economics, Poverty", rating: 4.7, image_url: "./images/id54.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 55, title: "The Big Short", overview: "Inside the Doomsday Machine, chronicling the build-up of the housing and credit bubble of the 2000s.", published: 2010, author: "Michael Lewis", genre: "Economics", language: "English", pages: 320, subject: "Financial Crisis, Wall Street", rating: 4.5, image_url: "./images/id55.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 56, title: "Thinking, Fast and Slow (Economics Edition)", overview: "Applies Kahneman's psychological theories to economic decision-making, a core text in behavioral economics.", published: 2011, author: "Daniel Kahneman", genre: "Economics", language: "English", pages: 499, subject: "Behavioral Economics, Cognitive Bias", rating: 4.8, image_url: "./images/id56.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 57, title: "The General Theory of Employment, Interest and Money", overview: "Keynes's revolutionary work that laid the foundation for modern macroeconomics, advocating for government intervention.", published: 1936, author: "John Maynard Keynes", genre: "Economics", language: "English", pages: 403, subject: "Keynesian Economics, Macroeconomics", rating: 4.3, image_url: "./images/id57.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 58, title: "23 Things They Don't Tell You About Capitalism", overview: "A critical look at the assumptions and realities of global capitalism.", published: 2010, author: "Ha-Joon Chang", genre: "Economics", language: "English", pages: 304, subject: "Political Economy, Globalism", rating: 4.4, image_url: "./images/id58.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 59, title: "Factfulness", overview: "Ten Reasons We're Wrong About the World—and Why Things Are Better Than You Think, focusing on a data-driven worldview.", published: 2018, author: "Hans Rosling", genre: "Economics", language: "English", pages: 352, subject: "Global Health, Data Analysis", rating: 4.8, image_url: "./images/id59.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 60, title: "The Ascent of Money", overview: "A Financial History of the World, tracing the evolution of money and finance from ancient times.", published: 2008, author: "Niall Ferguson", genre: "Economics", language: "English", pages: 464, subject: "Financial History, Global Finance", rating: 4.4, image_url: "./images/id60.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 61, title: "Debt: The First 5,000 Years", overview: "Examines the history of debt and its central role in shaping human societies and economies.", published: 2011, author: "David Graeber", genre: "Economics", language: "English", pages: 544, subject: "Anthropology, Monetary Theory", rating: 4.5, image_url: "./images/id61.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 62, title: "Narrative Economics", overview: "How Stories Go Viral and Drive Major Economic Events, introducing the idea that popular narratives shape economic outcomes.", published: 2019, author: "Robert J. Shiller", genre: "Economics", language: "English", pages: 368, subject: "Behavioral Economics, Cultural Economics", rating: 4.2, image_url: "./images/id62.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 63, title: "The Mystery of Capital", overview: "Why Capitalism Triumphs in the West and Fails Everywhere Else, focusing on formal property rights.", published: 2000, author: "Hernando de Soto", genre: "Economics", language: "English", pages: 276, subject: "Development Economics, Property Rights", rating: 4.1, image_url: "./images/id63.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 64, title: "The Undercover Economist", overview: "Using economic principles to explain the workings of the everyday world, from coffee shops to drug dealers.", published: 2005, author: "Tim Harford", genre: "Economics", language: "English", pages: 304, subject: "Microeconomics, Applied Economics", rating: 4.4, image_url: "./images/id64.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 65, title: "Animal Spirits", overview: "How Human Psychology Drives the Economy, arguing that human emotions and irrationality are central to economic fluctuations.", published: 2009, author: "George A. Akerlof, Robert J. Shiller", genre: "Economics", language: "English", pages: 240, subject: "Behavioral Economics, Macroeconomics", rating: 4.3, image_url: "./images/id65.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 66, title: "One Economics, Many Recipes", overview: "Globalization, Institutions, and Economic Growth, examining why different growth strategies work in different countries.", published: 2007, author: "Dani Rodrik", genre: "Economics", language: "English", pages: 264, subject: "International Economics, Growth Theory", rating: 4.1, image_url: "./images/id66.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 67, title: "Economics in One Lesson", overview: "A classic rebuttal to various economic fallacies, emphasizing the long-term, indirect consequences of policies.", published: 1946, author: "Henry Hazlitt", genre: "Economics", language: "English", pages: 218, subject: "Free Market Economics, Fallacies", rating: 4.5, image_url: "./images/id67.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 68, title: "Misbehaving: The Making of Behavioral Economics", overview: "Richard Thaler's memoir on the origins and rise of behavioral economics as a field.", published: 2015, author: "Richard Thaler", genre: "Economics", language: "English", pages: 432, subject: "Behavioral Economics, History of Economics", rating: 4.6, image_url: "./images/id68.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+
+            // Genre: Relationships (20 Books)
+            { 
+                id: 10, title: "Find Love", overview: "A modern guide to understanding attraction, building healthy relationships, and navigating the dating landscape.", published: 2022, author: "Paul Brunson", genre: "Relationships", language: "English", pages: 256, subject: "Dating, Emotional Health", rating: 4.2, image_url: "./images/id10.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 11, title: "The 5 Love Languages", overview: "The secret to love that lasts by understanding and speaking your partner's primary emotional love language.", published: 1992, author: "Gary Chapman", genre: "Relationships", language: "English", pages: 208, subject: "Marriage, Intimacy", rating: 4.7, image_url: "./images/id11.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 18, title: "Attached", overview: "The New Science of Adult Attachment and How It Can Help You Find—and Keep—Love.", published: 2010, author: "Amir Levine, Rachel S.F. Heller", genre: "Relationships", language: "English", pages: 304, subject: "Attachment Theory, Dating", rating: 4.6, image_url: "./images/id18.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 69, title: "Come As You Are", overview: "The Surprising New Science That Will Transform Your Sex Life, focusing on the biology of female sexuality.", published: 2015, author: "Emily Nagoski", genre: "Relationships", language: "English", pages: 352, subject: "Sexuality, Intimacy, Women's Health", rating: 4.7, image_url: "./images/id69.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 70, title: "The Seven Principles for Making Marriage Work", overview: "A practical guide to a lasting relationship based on decades of research by the Gottman Institute.", published: 1999, author: "John M. Gottman, Nan Silver", genre: "Relationships", language: "English", pages: 272, subject: "Marriage, Conflict Resolution", rating: 4.8, image_url: "./images/id70.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 71, title: "Hold Me Tight", overview: "Seven Conversations for a Lifetime of Love, based on Emotionally Focused Therapy (EFT).", published: 2008, author: "Sue Johnson", genre: "Relationships", language: "English", pages: 288, subject: "Couples Therapy, Attachment", rating: 4.6, image_url: "./images/id71.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 72, title: "Mating in Captivity", overview: "Unlocking Erotic Intelligence, exploring the paradox of reconciling domesticity and sexual desire.", published: 2006, author: "Esther Perel", genre: "Relationships", language: "English", pages: 272, subject: "Intimacy, Desire, Marriage", rating: 4.5, image_url: "./images/id72.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 73, title: "A General Theory of Love", overview: "A look at the science of emotional connection, and how our brains are wired for attachment.", published: 2000, author: "Lewis, Amini, Lannon", genre: "Relationships", language: "English", pages: 272, subject: "Neuroscience, Emotional Bonding", rating: 4.4, image_url: "./images/id73.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 74, title: "Getting the Love You Want", overview: "A Guide for Couples, introducing Imago Relationship Therapy.", published: 1988, author: "Harville Hendrix", genre: "Relationships", language: "English", pages: 320, subject: "Couples Therapy, Self-Discovery", rating: 4.3, image_url: "./images/id74.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 75, title: "The State of Affairs", overview: "Rethinking Infidelity, a complex look at why people cheat and how couples can recover or rethink relationships.", published: 2017, author: "Esther Perel", genre: "Relationships", language: "English", pages: 336, subject: "Infidelity, Trust, Marriage", rating: 4.6, image_url: "./images/id75.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 76, title: "Intimate Connections", overview: "How to overcome shyness and loneliness by learning the skills of intimacy.", published: 1983, author: "David Burns", genre: "Relationships", language: "English", pages: 304, subject: "Social Skills, Loneliness", rating: 4.2, image_url: "./images/id76.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 77, title: "Why We Love", overview: "The Nature and Chemistry of Romantic Love, a scientific look at the three stages of love: lust, attraction, and attachment.", published: 2004, author: "Helen Fisher", genre: "Relationships", language: "English", pages: 300, subject: "Neuroscience, Romantic Love", rating: 4.5, image_url: "./images/id77.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 78, title: "The Dance of Anger", overview: "A Woman's Guide to Changing the Patterns of Intimate Relationships, focusing on healthy expression of anger.", published: 1985, author: "Harriet Lerner", genre: "Relationships", language: "English", pages: 224, subject: "Anger Management, Feminism", rating: 4.4, image_url: "./images/id78.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 79, title: "Deeper Dating", overview: "How to Drop the Games of Seduction and Discover the Power of Intimacy, focusing on embracing one's core self.", published: 2015, author: "Ken Page", genre: "Relationships", language: "English", pages: 304, subject: "Dating, Intimacy, Self-Worth", rating: 4.3, image_url: "./images/id79.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 80, title: "We Love Because We Cannot Help It", overview: "A philosophical and psychological exploration of the compulsion to love.", published: 2021, author: "Erica Komisar", genre: "Relationships", language: "English", pages: 288, subject: "Emotional Health, Psychology", rating: 4.1, image_url: "./images/id80.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 81, title: "Love Sense", overview: "The Revolutionary New Science of Romantic Relationships, further expanding on the secure bond of attachment.", published: 2013, author: "Sue Johnson", genre: "Relationships", language: "English", pages: 304, subject: "Attachment Theory, EFT", rating: 4.5, image_url: "./images/id81.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 82, title: "Love & Respect", overview: "The Love She Most Desires; The Respect He Most Needs, based on Ephesians 5 and focusing on different relational needs.", published: 2004, author: "Emerson Eggerichs", genre: "Relationships", language: "English", pages: 304, subject: "Marriage, Christian Perspective", rating: 4.0, image_url: "./images/id82.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 83, title: "Healing the Shame That Binds You", overview: "Explores how toxic shame affects relationships and self-image, offering a path to recovery.", published: 1990, author: "John Bradshaw", genre: "Relationships", language: "English", pages: 224, subject: "Trauma, Emotional Healing", rating: 4.6, image_url: "./images/id83.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 84, title: "The Gift of Therapy", overview: "An Open Letter to a New Generation of Therapists and Their Patients, offering deep insights into human connection.", published: 2001, author: "Irvin D. Yalom", genre: "Relationships", language: "English", pages: 272, subject: "Therapy, Human Connection", rating: 4.7, image_url: "./images/id84.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 85, title: "Why Does He Do That?", overview: "Inside the Minds of Angry and Controlling Men, a guide to recognizing and dealing with abusive behavior.", published: 2002, author: "Lundy Bancroft", genre: "Relationships", language: "English", pages: 400, subject: "Abuse, Domestic Violence", rating: 4.9, image_url: "./images/id85.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+
+            // Genre: Self-Improvement (20 Books)
+            { 
+                id: 12, title: "Atomic Habits", overview: "An easy & proven way to build good habits & break bad ones, focusing on tiny changes that yield remarkable results.", published: 2018, author: "James Clear", genre: "Self-Improvement", language: "English", pages: 320, subject: "Habit Formation, Productivity", rating: 4.9, image_url: "./images/id12.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 13, title: "Deep Work", overview: "Rules for focused success in a distracted world, arguing that the ability to perform deep work is becoming increasingly rare and valuable.", published: 2016, author: "Cal Newport", genre: "Self-Improvement", language: "English", pages: 304, subject: "Focus, Productivity, Attention", rating: 4.7, image_url: "./images/id13.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 14, title: "The Power of Now", overview: "A spiritual guide that encourages readers to live in the present moment, transcending thoughts of the past and future.", published: 1997, author: "Eckhart Tolle", genre: "Self-Improvement", language: "English", pages: 236, subject: "Mindfulness, Spirituality", rating: 4.5, image_url: "./images/id14.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 19, title: "The Subtle Art of Not Giving a F*ck", overview: "A counterintuitive approach to living a good life, focusing on accepting limitations and choosing what to care about.", published: 2016, author: "Mark Manson", genre: "Self-Improvement", language: "English", pages: 224, subject: "Stoicism, Values, Self-Help", rating: 4.3, image_url: "./images/id19.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 20, title: "Grit: The Power of Passion and Perseverance", overview: "Psychologist Angela Duckworth shows anyone striving to succeed that the secret to outstanding achievement is not talent, but a focused persistence called 'grit'.", published: 2016, author: "Angela Duckworth", genre: "Self-Improvement", language: "English", pages: 352, subject: "Success, Achievement, Psychology", rating: 4.7, image_url: "./images/id20.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 86, title: "The 4-Hour Workweek", overview: "Escape 9-5, Live Anywhere, and Join the New Rich, advocating for lifestyle design and outsourcing.", published: 2007, author: "Timothy Ferriss", genre: "Self-Improvement", language: "English", pages: 308, subject: "Lifestyle Design, Productivity", rating: 4.4, image_url: "./images/id86.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 87, title: "Can't Hurt Me", overview: "Master Your Mind and Defy the Odds, David Goggins's story of overcoming massive obstacles through mental toughness.", published: 2018, author: "David Goggins", genre: "Self-Improvement", language: "English", pages: 364, subject: "Mental Toughness, Discipline", rating: 4.9, image_url: "./images/id87.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 88, title: "As a Man Thinketh", overview: "A powerful philosophical essay exploring the link between one's thoughts and one's character and destiny.", published: 1903, author: "James Allen", genre: "Self-Improvement", language: "English", pages: 64, subject: "Mindset, Philosophy", rating: 4.2, image_url: "./images/id88.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 89, title: "The 7 Habits of Highly Effective People (Self-Improvement Edition)", overview: "Focuses on developing character and achieving self-mastery through principle-centered habits.", published: 1989, author: "Stephen Covey", genre: "Self-Improvement", language: "English", pages: 384, subject: "Personal Effectiveness, Character", rating: 4.6, image_url: "./images/id89.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 90, title: "Make Time", overview: "How to Focus on What Matters Every Day, a practical guide to optimizing daily schedules and attention.", published: 2018, author: "Jake Knapp, John Zeratsky", genre: "Self-Improvement", language: "English", pages: 304, subject: "Time Management, Focus", rating: 4.5, image_url: "./images/id90.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 91, title: "Meditations", overview: "A series of personal writings by the Roman Emperor Marcus Aurelius on Stoic philosophy and self-reflection.", published: 1558, author: "Marcus Aurelius", genre: "Self-Improvement", language: "English", pages: 256, subject: "Stoicism, Philosophy, Resilience", rating: 4.8, image_url: "./images/id91.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 92, title: "Essentialism: The Disciplined Pursuit of Less", overview: "A systematic approach to identifying what is absolutely essential and eliminating everything else.", published: 2014, author: "Greg McKeown", genre: "Self-Improvement", language: "English", pages: 272, subject: "Productivity, Minimalism", rating: 4.6, image_url: "./images/id92.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 93, title: "Declutter Your Mind", overview: "How to Stop Worrying, Relieve Anxiety, and Eliminate Negative Thinking, focusing on mental organization.", published: 2017, author: "S.J. Scott, Barrie Davenport", genre: "Self-Improvement", language: "English", pages: 160, subject: "Anxiety, Mindfulness", rating: 4.3, image_url: "./images/id93.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 94, title: "Digital Minimalism", overview: "Choosing a Focused Life in a Noisy World, advocating for a philosophy of technology use.", published: 2019, author: "Cal Newport", genre: "Self-Improvement", language: "English", pages: 304, subject: "Focus, Technology Use", rating: 4.5, image_url: "./images/id94.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 95, title: "The War of Art", overview: "Break Through the Blocks and Win Your Inner Creative Battles, focusing on overcoming resistance.", published: 2002, author: "Steven Pressfield", genre: "Self-Improvement", language: "English", pages: 192, subject: "Creativity, Motivation", rating: 4.7, image_url: "./images/id95.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 96, title: "High Performance Habits", overview: "How Extraordinary People Become That Way, based on research into consistent success.", published: 2017, author: "Brendon Burchard", genre: "Self-Improvement", language: "English", pages: 400, subject: "Achievement, Peak Performance", rating: 4.4, image_url: "./images/id96.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 97, title: "Feel the Fear and Do It Anyway", overview: "Dynamic Techniques for Turning Fear, Indecision, and Anger into Power, Action, and Love.", published: 1987, author: "Susan Jeffers", genre: "Self-Improvement", language: "English", pages: 208, subject: "Fear, Confidence", rating: 4.5, image_url: "./images/id97.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 98, title: "The Millionaire Fastlane", overview: "Crack the Code to Wealth and Live Rich for a Lifetime, focused on entrepreneurship and value creation.", published: 2011, author: "MJ DeMarco", genre: "Self-Improvement", language: "English", pages: 300, subject: "Wealth Creation, Entrepreneurship", rating: 4.6, image_url: "./images/id98.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 99, title: "Mind Hacking", overview: "How to Change Your Mind for Good in 21 Days, using cognitive behavioral techniques.", published: 2015, author: "Sir John Hargrave", genre: "Self-Improvement", language: "English", pages: 272, subject: "Cognitive Behavior, Mental Health", rating: 4.3, image_url: "./images/id99.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 100, title: "Your Erroneous Zones", overview: "A classic guide to taking control of one's feelings and reactions, advocating for total self-reliance.", published: 1976, author: "Wayne Dyer", genre: "Self-Improvement", language: "English", pages: 260, subject: "Self-Reliance, Emotional Control", rating: 4.1, image_url: "./images/id100.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+
+            // Genre: Technology (20 Books)
+            { 
+                id: 101, title: "The Innovator's Dilemma", overview: "When New Technologies Cause Great Firms to Fail, a foundational text on disruptive innovation.", published: 1997, author: "Clayton M. Christensen", genre: "Technology", language: "English", pages: 286, subject: "Disruptive Innovation, Business Strategy", rating: 4.6, image_url: "./images/id101.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 102, title: "Code: The Hidden Language of Computer Hardware and Software", overview: "Explains how computers work, starting from simple switches and working up to programming.", published: 1999, author: "Charles Petzold", genre: "Technology", language: "English", pages: 400, subject: "Computer Science, Programming", rating: 4.8, image_url: "./images/id102.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 103, title: "The Singularity Is Near", overview: "When Humans Transcend Biology, a vision of the future where technological change is so rapid it fundamentally alters human nature.", published: 2005, author: "Ray Kurzweil", genre: "Technology", language: "English", pages: 672, subject: "Artificial Intelligence, Futurism", rating: 4.4, image_url: "./images/id103.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 104, "title": "Sapiens (Technology Edition)", overview: "An anthropological view on how technology, from fire to AI, has shaped human history.", published: 2011, author: "Yuval Noah Harari", genre: "Technology", language: "English", pages: 443, subject: "History of Technology, Human Evolution", rating: 4.8, image_url: "./images/id104.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 105, title: "The Second Machine Age", overview: "Work, Progress, and Prosperity in a Time of Brilliant Technologies, focusing on the impact of digital technology and AI on the economy.", published: 2014, author: "Erik Brynjolfsson, Andrew McAfee", genre: "Technology", language: "English", pages: 320, subject: "Artificial Intelligence, Economics of Technology", rating: 4.5, image_url: "./images/id105.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 106, title: "The Lean Startup", overview: "How Today's Entrepreneurs Use Continuous Innovation to Create Radically Successful Businesses, a methodology for product development.", published: 2011, author: "Eric Ries", genre: "Technology", language: "English", pages: 336, subject: "Entrepreneurship, Agile Development", rating: 4.6, image_url: "./images/id106.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 107, title: "Zero to One", overview: "Notes on Startups, or How to Build the Future, advocating for building monopolies through unique technological innovation.", published: 2014, author: "Peter Thiel, Blake Masters", genre: "Technology", language: "English", pages: 224, subject: "Venture Capital, Startups", rating: 4.7, image_url: "./images/id107.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 108, title: "Weapons of Math Destruction", overview: "How Big Data Increases Inequality and Threatens Democracy, a critical look at algorithmic bias.", published: 2016, author: "Cathy O'Neil", genre: "Technology", language: "English", pages: 272, subject: "Big Data, Algorithmic Bias, Ethics", rating: 4.5, image_url: "./images/id108.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 109, title: "The Soul of a New Machine", overview: "A classic account of the design and development of a new computer in the late 1970s, showcasing engineering culture.", published: 1981, author: "Tracy Kidder", genre: "Technology", language: "English", pages: 320, subject: "Computer Engineering, Corporate Culture", rating: 4.3, image_url: "./images/id109.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 110, title: "Life 3.0: Being Human in the Age of Artificial Intelligence", overview: "Explores the future of life on Earth and beyond, examining the potential societal impacts of advanced AI.", published: 2017, author: "Max Tegmark", genre: "Technology", language: "English", pages: 368, subject: "Artificial Intelligence, Existential Risk", rating: 4.6, image_url: "./images/id110.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 111, title: "The Cathedral and the Bazaar", overview: "Musings on Linux and Open Source by an Accidental Revolutionary, a seminal text on open-source development.", published: 1999, author: "Eric S. Raymond", genre: "Technology", language: "English", pages: 224, subject: "Open Source, Software Development", rating: 4.2, image_url: "./images/id111.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 112, title: "Superintelligence", overview: "Paths, Dangers, Strategies, a thorough analysis of the existential risk posed by the creation of machine superintelligence.", published: 2014, author: "Nick Bostrom", genre: "Technology", language: "English", pages: 352, subject: "Artificial Intelligence, Ethics, Risk", rating: 4.4, image_url: "./images/id112.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 113, title: "Hackers: Heroes of the Computer Revolution", overview: "A history of the early computer enthusiasts who defined the culture of the technology world.", published: 1984, author: "Steven Levy", genre: "Technology", language: "English", pages: 464, subject: "Computer History, Hacker Culture", rating: 4.5, image_url: "./images/id113.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 114, title: "The Mythical Man-Month", overview: "Essays on Software Engineering, a classic management text on the challenges of large-scale software projects.", published: 1975, author: "Frederick Brooks Jr.", genre: "Technology", language: "English", pages: 322, subject: "Software Engineering, Project Management", rating: 4.7, image_url: "./images/id114.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 115, title: "Turing's Cathedral", overview: "The Origins of the Digital Universe, a historical narrative of the early computer age at Princeton.", published: 2012, author: "George Dyson", genre: "Technology", language: "English", pages: 400, subject: "Computer History, Theory", rating: 4.3, image_url: "./images/id115.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 116, title: "The Master Algorithm", overview: "How the Quest for the Ultimate Learning Machine Will Remake Our World, explaining machine learning algorithms.", published: 2015, author: "Pedro Domingos", genre: "Technology", language: "English", pages: 336, subject: "Machine Learning, Data Science", rating: 4.5, image_url: "./images/id116.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 117, title: "The Age of Surveillance Capitalism", overview: "The Fight for a Human Future at the New Frontier of Power, a critical analysis of the business model of tech giants.", published: 2019, author: "Shoshana Zuboff", genre: "Technology", language: "English", pages: 704, subject: "Privacy, Digital Ethics", rating: 4.4, image_url: "./images/id117.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 118, title: "Where Good Ideas Come From", overview: "The Natural History of Innovation, examining the environments and patterns that lead to breakthrough ideas.", published: 2010, author: "Steven Johnson", genre: "Technology", language: "English", pages: 336, subject: "Innovation, Creativity", rating: 4.5, image_url: "./images/id118.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 119, title: "Designing Data-Intensive Applications", overview: "The Essential Guide to the Big Ideas Behind Reliable, Scalable, and Maintainable Systems, a practical guide for engineers.", published: 2017, author: "Martin Kleppmann", genre: "Technology", language: "English", pages: 616, subject: "Database Systems, Scalability", rating: 4.9, image_url: "./images/id119.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            },
+            { 
+                id: 120, title: "iWoz: Computer Geek to Cult Icon", overview: "How I Invented the Personal Computer, Co-Founded Apple, and Had Fun Doing It, Steve Wozniak's autobiography.", published: 2006, author: "Steve Wozniak, Gina Smith", genre: "Technology", language: "English", pages: 313, subject: "Entrepreneurship, Computer History", rating: 4.2, image_url: "./images/id120.jpg", 
+                prices: [
+                    { store: "Placeholder Store", price: 0.00, currency: "USD", link: "https://YOUR-MANUAL-LINK-TO-BUY" }
+                ]
+            }
+        ];
+
+        // NEW: GENRE COLOR MAP
+        const GENRE_COLORS = {
+            "Communication": { bg: 'var(--color-communication)', text: 'black' },
+            "Economics":     { bg: 'var(--color-economics)', text: 'black' },
+            "Psychology":    { bg: 'var(--color-psychology)', text: 'white' }, // Override text for black background
+            "Relationships": { bg: 'var(--color-relationships)', text: 'black' },
+            "Self-Improvement": { bg: 'var(--color-self-improvement)', text: 'black' },
+            "Technology":    { bg: 'var(--color-technology)', text: 'white' },
+        };
+
+        // --- 2. JAVASCRIPT LOGIC ---
+        
+        let currentFilterGenre = 'All';
+        let currentSearchTerm = '';
+        let currentMinRating = 0;
+        
+        const booksGrid = document.getElementById('books-grid');
+        const genreFiltersContainer = document.getElementById('genre-filters');
+        const searchInput = document.getElementById('search-input');
+        const ratingFilterSelect = document.getElementById('rating-filter');
+        const noResultsMessage = document.getElementById('no-results');
+        
+        const recommendationSection = document.getElementById('recommendation-section');
+        const recommendationsGrid = document.getElementById('recommendations-grid');
+        const noRecommendationsMessage = document.getElementById('no-recommendations');
+        
+        // NEW: Modal Elements
+        const bookModal = document.getElementById('book-modal');
+        const modalContent = document.getElementById('modal-content');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const modalPriceArea = document.getElementById('modal-price-comparison-area'); // NEW
+
+        // --- LOCAL STORAGE TRACKING FUNCTIONS ---
+
+        const HISTORY_KEY = 'viewedBookHistory';
+        
+        // Retrieves the viewing history from localStorage
+        function getHistory() {
+            const historyJson = localStorage.getItem(HISTORY_KEY);
+            return historyJson ? JSON.parse(historyJson) : [];
+        }
+
+        // Adds a book ID and its genre to the viewing history
+        function addHistory(book) {
+            const history = getHistory();
+            // Store just the essential data: id and genre
+            const newEntry = { id: book.id, genre: book.genre };
+            
+            // Limit history to the last 20 views for performance
+            history.unshift(newEntry);
+            const limitedHistory = history.slice(0, 20); 
+            
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(limitedHistory));
+            
+            // Re-render recommendations after a view
+            renderRecommendations();
+        }
+
+        // --- RECOMMENDATION LOGIC ---
+
+        function getRecommendations() {
+            const history = getHistory();
+            const viewedIds = new Set(history.map(h => h.id));
+            const recommendations = [];
+
+            if (history.length < 3) {
+                // Not enough data yet, return empty
+                return [];
+            }
+
+            // 1. Tally genres from history
+            const genreCounts = {};
+            history.forEach(h => {
+                genreCounts[h.genre] = (genreCounts[h.genre] || 0) + 1;
+            });
+
+            // 2. Sort genres by view count (descending)
+            const sortedGenres = Object.keys(genreCounts).sort((a, b) => genreCounts[b] - genreCounts[a]);
+            
+            // 3. Select the top 2 genres for recommendation
+            const topGenres = sortedGenres.slice(0, 2);
+
+            // 4. Find unviewed books in the top genres
+            topGenres.forEach(genre => {
+                const booksInGenre = ALL_BOOKS_DATA.filter(book => 
+                    book.genre === genre && !viewedIds.has(book.id)
+                );
+                // Add up to 3 recommendations per top genre
+                recommendations.push(...booksInGenre.slice(0, 3));
+            });
+
+            // Ensure no duplicates and limit to a max of 6 recommendations total
+            return [...new Set(recommendations)].slice(0, 6);
+        }
+        
+        // Renders the recommendations section
+        function renderRecommendations() {
+            const recommendedBooks = getRecommendations();
+            
+            if (recommendedBooks.length === 0) {
+                recommendationSection.classList.add('hidden');
+                // Only show the "no recommendations" message if history is present
+                if (getHistory().length > 0) {
+                     noRecommendationsMessage.classList.remove('hidden');
+                     recommendationsGrid.innerHTML = '';
+                     recommendationSection.classList.remove('hidden'); // Show section, but with message
+                }
+                return;
+            }
+
+            // Hide the "no recommendations" message and show the grid
+            noRecommendationsMessage.classList.add('hidden');
+            recommendationsGrid.innerHTML = recommendedBooks.map(book => createBookCardHTML(book, true)).join('');
+            recommendationSection.classList.remove('hidden');
+            
+            // Note: We don't attach new click listeners here as the recommendation cards
+            // share the same click tracking logic as the main grid (via event delegation)
+        }
+
+        // Function to create the HTML for a single book card
+        function createBookCardHTML(book, isRecommendation = false) {
+            const accentColor = isRecommendation ? 'bg-green-700/50 text-green-300' : 'bg-blue-900/50 text-blue-300';
+            
+            return `
+                <div class="book-card theme-bg-card rounded-xl p-5 shadow-xl border border-border-subtle hover:border-accent-hover flex flex-col" data-book-id="${book.id}" data-book-genre="${book.genre}">
+                    <img src="${book.image_url}" alt="${book.title}" class="book-image mb-4 rounded-lg shadow-md border border-gray-600">
+                    <h3 class="text-2xl font-bold theme-text-light mb-1">${book.title}</h3>
+                    <p class="text-sm font-medium text-cyan-400 mb-2">${book.author}</p>
+                    
+                    <div class="flex flex-wrap items-center gap-2 text-xs mb-3">
+                        <span class="${accentColor} px-3 py-1 rounded-full">${book.genre}</span>
+                        <span class="bg-yellow-900/50 text-yellow-300 px-3 py-1 rounded-full flex items-center">
+                            <i class="fas fa-star text-yellow-500 mr-1"></i> ${book.rating}
+                        </span>
+                        <span class="text-gray-400">${book.pages} pages</span>
+                    </div>
+
+                    <p class="text-gray-400 text-sm flex-grow mb-4">${book.overview}</p>
+
+                    <div class="mt-auto border-t border-gray-700 pt-3 text-xs text-gray-500 grid grid-cols-2 gap-y-1">
+                        <span><strong class="text-gray-300">Published:</strong> ${book.published}</span>
+                        <span><strong class="text-gray-300">Language:</strong> ${book.language}</span>
+                        <span class="col-span-2"><strong class="text-gray-300">Subject:</strong> ${book.subject}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Function to filter and display books
+        function renderBooks() {
+            let filteredBooks = ALL_BOOKS_DATA;
+
+            // 1. Filter by Genre
+            if (currentFilterGenre !== 'All') {
+                filteredBooks = filteredBooks.filter(book => book.genre === currentFilterGenre);
+            }
+
+            // 2. Filter by Search Term (Title or Author)
+            if (currentSearchTerm) {
+                const term = currentSearchTerm.toLowerCase();
+                filteredBooks = filteredBooks.filter(book => 
+                    book.title.toLowerCase().includes(term) ||
+                    book.author.toLowerCase().includes(term)
+                );
+            }
+
+            // 3. Filter by Global Rating
+            if (currentMinRating > 0) {
+                filteredBooks = filteredBooks.filter(book => book.rating >= currentMinRating);
+            }
+
+            // Update the UI
+            booksGrid.innerHTML = filteredBooks.map(book => createBookCardHTML(book)).join('');
+            
+            // Show/hide no results message
+            if (filteredBooks.length === 0) {
+                noResultsMessage.classList.remove('hidden');
+            } else {
+                noResultsMessage.classList.add('hidden');
+            }
+            
+            // Render recommendations after the main grid is updated
+            renderRecommendations();
+        }
+        
+        // Function to set up genre buttons dynamically
+        function setupGenreFilters() {
+            const genres = [...new Set(ALL_BOOKS_DATA.map(book => book.genre))].sort(); // Sort for consistent order
+            
+            genres.forEach(genre => {
+                const button = document.createElement('button');
+                button.className = 'filter-btn theme-bg-deep text-white px-4 py-2 rounded-full border border-cyan-600';
+                button.dataset.genre = genre;
+                button.textContent = genre;
+                
+                button.addEventListener('click', () => {
+                    // Update active state
+                    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+
+                    currentFilterGenre = genre;
+                    renderBooks();
+                });
+                genreFiltersContainer.appendChild(button);
+            });
+            
+            // Add event listener to the "Show All" button
+            document.querySelector('[data-genre="All"]').addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelector('[data-genre="All"]').classList.add('active');
+                currentFilterGenre = 'All';
+                renderBooks();
+            });
+        }
+
+        /**
+        * Handles link navigation with a visual 'redirecting' loader.
+        * @param {HTMLElement} element - The anchor tag element that was clicked (passed as 'this').
+        * @param {string} link - The final URL to navigate to.
+        * @param {string} retailer - The name of the retailer for the message.
+        */
+        function redirectWithLoader(element, link, retailer) {
+            const originalContent = element.innerHTML;
+    
+            // 1. Show the redirect message and spinning loader
+            // Using a nice Font Awesome spinner: <i class="fas fa-spinner fa-spin"></i>
+            element.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Redirecting to ${retailer}...`;
+            element.classList.add('pointer-events-none'); // Prevent double-clicking
+            element.classList.remove('hover:shadow-xl'); // Clean up hover effect during loading
+    
+            // 2. Wait for 1 second for the 'cute' loading effect, then open the link
+            setTimeout(() => {
+                window.open(link, '_blank'); // Open link in a new tab
+        
+                // 3. Reset the button/link to its original state for when the user returns to the modal
+                element.innerHTML = originalContent;
+                element.classList.remove('pointer-events-none');
+                element.classList.add('hover:shadow-xl'); // Restore hover effect
+            }, 1000); // 1000 milliseconds (1 second) delay
+        }
+        
+        // NEW: Price Comparison HTML Generator
+        function createPriceComparisonHTML(book) {
+            // Check if price data is available
+            if (!book.prices || book.prices.length === 0) {
+                return '<p class="text-gray-400 text-sm mb-2">Price comparison data is currently unavailable for this book.</p>';
+            }
+
+            // Simulate real-time by sorting prices: lowest first (ASC)
+            const sortedPrices = [...book.prices].sort((a, b) => a.price - b.price);
+            const lowestPrice = sortedPrices[0];
+            const genreData = GENRE_COLORS[book.genre];
+            const accentColor = genreData.text === 'white' ? 'white' : 'black';
+            const accentBg = genreData.bg;
+            
+            // Special text color handling for Psychology (black background)
+            const lowestPriceTextColor = book.genre === "Psychology" ? 'var(--accent-hover)' : 'var(--accent-main)';
+            const generalTextColor = book.genre === "Psychology" ? 'text-gray-200' : 'text-gray-800';
+            
+            // Header for the comparison - styled to stand out
+            let html = `
+                <div class="mb-6 p-4 rounded-xl shadow-inner" style="background-color: ${accentBg}; border: 2px solid ${lowestPriceTextColor};">
+                    <p class="text-sm font-medium mb-1 ${generalTextColor}">Lowest Online Price (Simulated)</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-4xl font-extrabold" style="color: ${lowestPriceTextColor};">$${lowestPrice.price.toFixed(2)}</span>
+                
+                        <a href="${lowestPrice.link}" 
+                            onclick="redirectWithLoader(this, '${lowestPrice.link}', '${lowestPrice.store}'); return false;"
+                            class="theme-accent-main text-black font-bold py-2 px-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow ml-4 focus:ring-4 focus:ring-cyan-500">
+                            Buy from ${lowestPrice.store}
+                        </a>
+                    </div>
+                </div>
+                <h4 class="text-lg font-semibold mb-3 ${generalTextColor}">Other Stores:</h4>
+                <div class="space-y-3">
+            `;
+
+            // List of all prices
+            html += sortedPrices.map((price, index) => {
+                if (index === 0) return ''; // Skip the lowest price as it is in the header
+        
+                return `
+                    <a href="${price.link}" 
+                        onclick="redirectWithLoader(this, '${price.link}', '${price.store}'); return false;"
+                        class="flex items-center justify-between p-3 rounded-lg shadow-md transition-all theme-bg-deep border border-gray-700 hover:border-accent-hover hover:bg-gray-800/50">
+                        <span class="font-medium theme-text-light">${price.store}</span>
+                        <span class="text-lg font-bold text-gray-400">$${price.price.toFixed(2)}</span>
+                    </a>
+                `;
+            }).join('');
+
+            html += '</div>';
+            
+            return html;
+        }
+
+        // NEW: Modal functions
+        
+        function openModal(book) {
+            const genreData = GENRE_COLORS[book.genre];
+            
+            // 1. Set Modal Colors (Matching your request)
+            modalContent.style.backgroundColor = genreData.bg;
+            document.getElementById('modal-title').style.color = genreData.text === 'white' ? 'white' : 'black';
+            document.getElementById('modal-genre').style.color = genreData.text === 'white' ? 'black' : 'white';
+            document.getElementById('modal-genre-banner').style.backgroundColor = genreData.text === 'white' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)';
+            
+            // Special handling for text contrast on the black psychology background
+            if (book.genre === "Psychology") {
+                 document.getElementById('modal-title').style.color = 'var(--accent-hover)'; // Cyan for title
+                 document.getElementById('modal-author').classList.remove('text-gray-400');
+                 document.getElementById('modal-author').classList.add('text-gray-200'); // Light gray for author
+                 document.getElementById('modal-overview').style.color = 'var(--text-light)'; // Pale Cyan
+            } else {
+                 document.getElementById('modal-title').style.color = 'black';
+                 document.getElementById('modal-author').classList.remove('text-gray-200');
+                 document.getElementById('modal-author').classList.add('text-gray-400'); 
+                 document.getElementById('modal-overview').style.color = 'black'; // Set overview text back to black or genre default
+            }
+            
+            // Set genre text color (handled by specific selector for banner)
+            document.getElementById('modal-genre').style.color = genreData.text;
+
+
+            // 2. Populate Modal Content
+            document.getElementById('modal-image').src = book.image_url;
+            document.getElementById('modal-title').textContent = book.title;
+            document.getElementById('modal-author').textContent = book.author;
+            document.getElementById('modal-genre').textContent = book.genre;
+            document.getElementById('modal-rating').textContent = `Rating: ${book.rating}`;
+            document.getElementById('modal-overview').textContent = book.overview;
+            
+            // NEW: Populate Price Comparison
+            modalPriceArea.innerHTML = createPriceComparisonHTML(book);
+
+            // Additional Info
+            document.getElementById('modal-published').textContent = book.published;
+            document.getElementById('modal-language').textContent = book.language;
+            document.getElementById('modal-pages').textContent = book.pages;
+            document.getElementById('modal-subject').textContent = book.subject;
+            
+            // 3. Display Modal with transition
+            bookModal.classList.remove('hidden');
+        }
+        
+        function closeModal() {
+            bookModal.classList.add('hidden');
+        }
+
+
+        // --- 3. EVENT LISTENERS ---
+
+        // Event Delegation for tracking clicks on both main grid and recommendation grid
+        function setupCardClickTracking() {
+            document.addEventListener('click', (event) => {
+                // Find the closest parent element with the class 'book-card'
+                const card = event.target.closest('.book-card');
+                
+                if (card) {
+                    const bookId = parseInt(card.dataset.bookId);
+                    
+                    const book = ALL_BOOKS_DATA.find(b => b.id === bookId);
+                    
+                    if (book) {
+                        addHistory(book); // Track the view
+                        openModal(book);  // Open the modal
+                        // console.log(`Book Viewed: ${book.title}. History updated and modal opened.`);
+                    }
+                }
+            });
+            
+            // Close modal via close button
+            modalCloseBtn.addEventListener('click', closeModal);
+            
+            // Close modal when clicking outside (on the overlay)
+            bookModal.addEventListener('click', (event) => {
+                // Check if the click target is the modal backdrop itself, not the content inside
+                if (event.target === bookModal) {
+                    closeModal();
+                }
+            });
+
+            // Close modal via ESC key
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && !bookModal.classList.contains('hidden')) {
+                    closeModal();
+                }
+            });
+        }
+
+        // Search Input Listener
+        searchInput.addEventListener('input', (event) => {
+            currentSearchTerm = event.target.value;
+            renderBooks();
+        });
+
+        // Rating Filter Listener
+        ratingFilterSelect.addEventListener('change', (event) => {
+            currentMinRating = parseFloat(event.target.value);
+            renderBooks();
+        });
+
+        // Initial setup on load
+        window.onload = function() {
+            // Include Font Awesome for the star icon
+            const fontAwesomeLink = document.createElement('link');
+            fontAwesomeLink.rel = 'stylesheet';
+            fontAwesomeLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css';
+            document.head.appendChild(fontAwesomeLink);
+            
+            setupGenreFilters();
+            setupCardClickTracking();
+            renderBooks(); // Initial render will also call renderRecommendations
+        };
+
+    </script>
+</body>
+</html>
